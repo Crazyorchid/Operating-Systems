@@ -62,7 +62,7 @@ deque<Process>queue2;
 
 //compare the arrival time between two person, if the arriving time are the same then comapring the ID;
 //Order of simultaneous arrivals of same-priority customers
-class contrast
+struct contrast
 {
     bool operator()(process a, process b){
         if (a.arriveTime !=b.arriveTime){
