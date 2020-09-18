@@ -1,26 +1,18 @@
-//
-// Created by runtao on 17/9/20.
-//
-
-#include "TicketBooker.h"
 #define MAX_PNUMBERS 50
-#define UNIT_TIME 5
-#define QUATEMAX 10
-#define MAX_NUMBER 100000
+#define MAX_NUMBER 10000
 #define MAX_TIME 5000
 #define THRESHOLD 3
-#define PRIORITYNUMBER 7
-
+#define PRIORITYN 7
+#define QUATEMAX 10
+#define UNIT_TIME 5
 #include "iostream"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "vector"
 #include "queue"
-
-using namespace  std;
-
-typedef struct process // make everything pyblic and define the structure type of the vars
+using namespace std;
+typedef struct person
 {
     char pID[16];
     int arriveTime;
@@ -31,343 +23,442 @@ typedef struct process // make everything pyblic and define the structure type o
     int readyTime;
     int runningTime;
     int waitingTime;
-    int requiredRunTime;
-    int comeTime;
-    int leaveTime;
+    int needRunTime;
+    int conTime;
+    int goneTime;
 
     bool inQueue;
-    bool outing;
-    bool runnning;
+    bool hasout;
+    bool hasrun;
+} Person;
+Person persons[MAX_PNUMBERS];
+int personsNumber;
+bool newPersonCome = true;
+int TIME = 0;
 
-
-} Process;
-
-Process person[MAX_PNUMBERS];
-int PNumber;
-int Time = 0;
-bool newArrivals = true;
-
-
-/*class OSQueue
+class MyQueue
 {
+
+private:
+    vector<Person> vec;
+
 public:
-    vector<Process> vec;
-
-    OSQueue(){};
-    ~OSQueue();
-};*/
-deque<Process>arrayQ1[PRIORITYNUMBER];
-queue<Process>finalQ;
-deque<Process>queue2;
-
-//compare the arrival time between two person, if the arriving time are the same then comapring the ID;
-//Order of simultaneous arrivals of same-priority customers
-struct contrast
-{
-    bool operator()(process a, process b){
-        if (a.arriveTime !=b.arriveTime){
-            return a.arriveTime > b.arriveTime;
-        }else{
-            return strcmp(a.pID, b.pID) > 0;
+    MyQueue(){};
+    ~MyQueue(){};
+    bool isEmpty()
+    {
+        return vec.size() == 0;
+    }
+    void Clear()
+    {
+        vec.clear();
+    }
+    int Size()
+    {
+        return vec.size();
+    }
+    void Pushfront(person a)
+    {
+        if (vec.size() > 0)
+        {
+            Person x = vec[vec.size() - 1];
+            vec.push_back(x);
+            for (int i = 1; i < vec.size(); i++)
+            {
+                vec[i] = vec[i - 1];
+            }
+            vec[0] = a;
         }
-
+        else
+        {
+            vec.push_back(a);
+        }
+    }
+    void Pushback(person a)
+    {
+        vec.push_back(a);
+    }
+    void Popback()
+    {
+        vec.pop_back();
+    }
+    void Popfront()
+    {
+        for (int i = 0; i < vec.size() - 1; i++)
+            vec[i] = vec[i + 1];
+        vec.pop_back();
+    }
+    Person Front()
+    {
+        return vec[0];
+    }
+    Person Back()
+    {
+        return vec[vec.size() - 1];
     }
 };
 
-//Q A-->B-->C
-priority_queue<Process, vector<Process>, contrast> firstPrioQ;
-priority_queue<Process, vector<Process>, contrast> secondPrioQ;
+deque<Person> arrayQ1[PRIORITYN];
+deque<Person> queue2;
+queue<Person> resultQueue;
 
-//read the flie and implement the
+struct compare
+{
+    bool operator()(person a, person b)
+    {
+        if (a.arriveTime != b.arriveTime)
+            return a.arriveTime > b.arriveTime;
+        else
+        {
+            return strcmp(a.pID, b.pID) > 0;
+        }
+    }
+};
+priority_queue<Person, vector<Person>, compare> priQ1;
+priority_queue<Person, vector<Person>, compare> priQ2;
+
 void readTxt(char **argv)
 {
     int i = 0;
-    freopen(argv[1],"r",stdin);
-    while (scanf("%s %d %d %d %d", person[i].pID, &person[i].arriveTime, &person[i].age, &person[i].priorityNumber, &person[i].tickets) != EOF);
+    freopen(argv[1], "r", stdin);
+    while (scanf("%s %d %d %d %d", persons[i].pID, &persons[i].arriveTime, &persons[i].priorityNumber, &persons[i].age, &persons[i].tickets) != EOF)
     {
+        //continue
 
-        person[i].readyTime = -MAX_NUMBER;
-        person[i].runningTime = 0;
-        person[i].waitingTime = 0;
-        person[i].comeTime = 0;
-        person[i].leaveTime = 0;
-        person[i].inQueue = false;
-        person[i].runnning = false;
-        person[i].outing = false;
-        person[i].requiredRunTime = UNIT_TIME * person[i].tickets;
+        persons[i].endTime = MAX_NUMBER;
+        persons[i].readyTime = -MAX_NUMBER;
+        persons[i].runningTime = 0;
+        persons[i].waitingTime = 0;
+        persons[i].conTime = 0;
+        persons[i].goneTime = 0;
+        persons[i].inQueue = false;
+        persons[i].hasrun = false;
+        persons[i].hasout = false;
+        persons[i].needRunTime = UNIT_TIME * persons[i].tickets;
         i++;
     }
-    PNumber = i;
-
+    personsNumber = i;
 }
-
-bool missionNotEnd() {
+bool missionNotEnd()
+{
     int i = 0;
-    while (i < PNumber) {
-        if (!person[i].outing)
+    while (i < personsNumber)
+    {
+        if (!persons[i].hasout)
             return true;
         i++;
     }
     return false;
 }
-    void RefreshQueue() {
-        while (!firstPrioQ.empty())
-            firstPrioQ.pop();
-        while (!secondPrioQ.empty())
-            secondPrioQ.pop();
-        for (int i = 0; i < PNumber; i++) {
-            if (Time >= person[i].arriveTime && person[i].inQueue == false) {
-                person[i].inQueue = true;
-                if (person[i].priorityNumber <= THRESHOLD) {
-                    firstPrioQ.push(person[i]);
-                } else {
-                    secondPrioQ.push(person[i]);
-                }
-            }
-        }
-        while (!firstPrioQ.empty()) {
-            Process x = firstPrioQ.top();
-            firstPrioQ.pop();
-            arrayQ1[x.priorityNumber - 1].push_back(x);
-        }
-        while (!secondPrioQ.empty()) {
-            Process x = secondPrioQ.top();
-            secondPrioQ.pop();
-            queue2.push_back(x);
-        }
-    }
-    void AgingMech() {
-        deque<Process> temp;
-        while (queue2.empty() == false) {
-            Process x = queue2.front();
-            queue2.pop_front();
-            if (x.age >= 10) {
-                x.age = 0;
-                bool panduan = x.priorityNumber <= 1;
-                if (panduan == false)
-                    x.priorityNumber -= 1;
-            }
-            if (x.priorityNumber <= 3) {
-                x.comeTime = 0;
-                int index = x.priorityNumber - 1;
-                arrayQ1[index].push_back(x);
-            } else
-                temp.push_back(x);
-        }
-        queue2 = temp;
-    }
-    void CheckFormP() {
-        while (firstPrioQ.size() != 0)
-            firstPrioQ.pop();
-        while (secondPrioQ.size() != 0)
-            secondPrioQ.pop();
-        int k;
-        for (k = 0; k < PNumber; k++) {
-            if (person[k].inQueue == false && person[k].arriveTime <= Time) {
-                person[k].inQueue = true;
-                if (person[k].priorityNumber <= 3) {
-                    firstPrioQ.push(person[k]);
-                } else if (person[k].priorityNumber > 3) {
-                    secondPrioQ.push(person[k]);
-                }
-            }
-        }
-        while (firstPrioQ.empty() == false) {
-            Process t = firstPrioQ.top();
-            int index = t.priorityNumber - 1;
-            arrayQ1[index].push_back(t);
-            firstPrioQ.pop();
-        }
-        while (secondPrioQ.empty() == false) {
-            queue2.push_back(secondPrioQ.top());
-            secondPrioQ.pop();
-        }
-    }
-
-    bool Q1ArrayExcute() {
-        bool IND = false;
-        for (int i = 0; i < PRIORITYNUMBER; i++) {
-            if (!IND) {
-                if (arrayQ1[i].size() > 0) {
-                    Process curP = arrayQ1->front();
-                    arrayQ1[i].pop_front();
-                    curP.age = 0;
-
-                    if (curP.runnning == false) {
-                        curP.readyTime = Time;
-                        curP.outing = true;
-                    }
-                    int timeleft = curP.requiredRunTime - curP.runningTime;
-                    int weighted_time_quantum = (QUATEMAX - curP.priorityNumber) * 10;
-                    int readrunnimgTime = min(timeleft, weighted_time_quantum);
-
-                    curP.runningTime = curP.runningTime + readrunnimgTime;
-                    Time = Time + readrunnimgTime;
-                    if (weighted_time_quantum < timeleft) {
-                        curP.comeTime = curP.comeTime + 1;
-                    }
-                    deque<Process> tmpQ;
-                    while (!queue2.empty()) {
-                        Process x = queue2.front();
-                        x.age++;
-                        tmpQ.push_back(x);
-                        queue2.pop_front();
-                    }
-                    queue2 = tmpQ;
-
-                    CheckFormP();
-
-                    if (curP.runnning < curP.requiredRunTime) {
-                        if (curP.comeTime >= 3) {
-                            curP.comeTime = 0;
-                            curP.priorityNumber = curP.priorityNumber + 1;
-                        }
-                        if (curP.priorityNumber <= 3) {
-                            int index = curP.priorityNumber - 1;
-                            arrayQ1[index].push_back(curP);
-                        } else if (curP.priorityNumber > 3) {
-                            queue2.push_back(curP);
-                        }
-                    } else {
-                        curP.endTime = Time;
-                        curP.outing = true;
-                        for (int i = 0; i < PNumber; i++) {
-                            if (person[i].pID == curP.pID)
-                                person[i].outing = true;
-                        }
-                        curP.waitingTime = curP.endTime - curP.readyTime - curP.runningTime;
-                        finalQ.push(curP);
-                    }
-                    AgingMech();
-                    IND = true;
-                }
-
-            } else
-                break;
-        }
-        return IND;
-    }
-
-    Process acIP(int time) {
-        Process x;
-        priority_queue<Process, vector<Process>, contrast> Q1;
-        x.priorityNumber = PRIORITYNUMBER;
-        x.arriveTime = time;
-        int index = 0;
-        while (index < PNumber) {
-            if (person[index].arriveTime <= time && person[index].inQueue == false) {
-                Q1.push(person[index]);
-            }
-            index++;
-        }
-        if (!Q1.empty())
-            x = Q1.top();
-        return x;
-    }
-
-    bool Que2Excute(bool QE) {
-
-        if (QE == true)
-            return false;
-        else if (queue2.empty() == false) {
-            Process curP = queue2.front();
-            queue2.pop_front();
-            curP.age = 0;
-            if (curP.runnning == false) //first run
+void QueueUpdate()
+{
+    while (!priQ1.empty())
+        priQ1.pop();
+    while (!priQ2.empty())
+        priQ2.pop();
+    for (int i = 0; i < personsNumber; i++)
+    {
+        if (TIME >= persons[i].arriveTime && persons[i].inQueue == false)
+        {
+            persons[i].inQueue = true;
+            if (persons[i].priorityNumber <= THRESHOLD)
             {
-                curP.readyTime = Time;
-                curP.runnning = true;
+                priQ1.push(persons[i]);
             }
+            else
+            {
+                priQ2.push(persons[i]);
+            }
+        }
+    }
+    while (!priQ1.empty())
+    {
+        Person x = priQ1.top();
+        priQ1.pop();
+        arrayQ1[x.priorityNumber - 1].push_back(x);
+    }
+    while (!priQ2.empty())
+    {
+        Person x = priQ2.top();
+        priQ2.pop();
+        queue2.push_back(x);
+    }
+}
+void AgeCqueue()
+{
+    deque<Person> tempQueue;
+    while (queue2.empty() == false)
+    {
+        Person x = queue2.front();
+        queue2.pop_front();
+        if (x.age >= 8)
+        {
+            x.age = 0;
+            bool judge = x.priorityNumber <= 1;
+            if (judge == false)
+                x.priorityNumber -= 1;
+        }
+        if (x.priorityNumber <= 3)
+        {
+            x.conTime = 0;
+            int index = x.priorityNumber - 1;
+            arrayQ1[index].push_back(x);
+        }
+        else
+            tempQueue.push_back(x);
+    }
+    queue2 = tempQueue;
+}
+void CheckFormP()
+{
+    while (priQ1.size() != 0)
+        priQ1.pop();
+    while (priQ2.size() != 0)
+        priQ2.pop();
+    int k;
+    for (k = 0; k < personsNumber; k++)
+    {
+        if (persons[k].inQueue == false && persons[k].arriveTime <= TIME)
+        {
+            persons[k].inQueue = true;
+            if (persons[k].priorityNumber <= 3)
+            {
+                priQ1.push(persons[k]);
+            }
+            else if (persons[k].priorityNumber > 3)
+            {
+                priQ2.push(persons[k]);
+            }
+        }
+    }
+    while (priQ1.empty() == false)
+    {
+        Person t = priQ1.top();
+        int index = t.priorityNumber - 1;
+        arrayQ1[index].push_back(t);
+        priQ1.pop();
+    }
+    while (priQ2.empty() == false)
+    {
+        queue2.push_back(priQ2.top());
+        priQ2.pop();
+    }
+}
+bool Que1ArrayExcute()
+{
+    //bool Result = false;
+    bool FLAG = false;
+    for (int i = 0; i < PRIORITYN; i++)
+    {
+        if (!FLAG)
+        {
+            if (arrayQ1[i].size() > 0)
+            {
+                Person thisP = arrayQ1[i].front();
+                arrayQ1[i].pop_front();
+                thisP.age = 0;
 
-            int leftTime = curP.tickets * UNIT_TIME - curP.runningTime;
-            int weighted_time_quantum = 20 * UNIT_TIME - curP.leaveTime;
-            int gettorunningTime = min(leftTime, weighted_time_quantum);
-            bool interuptFLAG = true;
+                if (thisP.hasrun == false)
+                {
+                    thisP.readyTime = TIME;
+                    thisP.hasrun = true;
+                }
+                int tempremainingT = thisP.needRunTime - thisP.runningTime;
+                int weighted_time_quantum = (QUATEMAX - thisP.priorityNumber) * 10;
+                int TorunningTime = min(tempremainingT, weighted_time_quantum);
 
-            int TogetTime = gettorunningTime + Time;
-            Process x = acIP(TogetTime);
-            int torunRealTime = x.arriveTime - Time; //real excut time
+                thisP.runningTime = thisP.runningTime + TorunningTime;
+                TIME = TIME + TorunningTime;
+                if (weighted_time_quantum < tempremainingT)
+                {
+                    thisP.conTime = thisP.conTime + 1;
+                }
 
-            curP.runningTime += torunRealTime;
-            Time += torunRealTime;
-
-            if (newArrivals) {
-                deque<Process> tempQueue;
-                while (!queue2.empty()) {
-                    Process x = queue2.front();
+                //queue2 age plus
+                deque<Person> tempQueue;
+                while (!queue2.empty())
+                {
+                    Person x = queue2.front();
                     x.age++;
                     tempQueue.push_back(x);
                     queue2.pop_front();
                 }
                 queue2 = tempQueue;
-                AgingMech();
-            }
-            if (torunRealTime < gettorunningTime) {
-                if (x.priorityNumber > 3)
-                    interuptFLAG = false;
-                else if (x.priorityNumber < curP.priorityNumber) {
-                    interuptFLAG = true;
-                    curP.leaveTime = 0;
-                    curP.comeTime += 1;
+
+                CheckFormP();
+
+                if (thisP.runningTime < thisP.needRunTime) //not finish
+                {
+                    if (thisP.conTime >= 3)
+                    {
+                        thisP.conTime = 0;
+                        thisP.priorityNumber = thisP.priorityNumber + 1;
+                    }
+                    if (thisP.priorityNumber <= 3)
+                    {
+                        int index = thisP.priorityNumber - 1;
+                        arrayQ1[index].push_back(thisP);
+                    }
+                    else if (thisP.priorityNumber > 3)
+                    {
+                        queue2.push_back(thisP);
+                    }
                 }
-            } else {
-                curP.leaveTime = 0;
-                if (weighted_time_quantum < leftTime)
-                    curP.comeTime += 1;
-            }
-
-            if (!interuptFLAG) //must not finish ,don't need age++
-            {
-                curP.leaveTime += torunRealTime;
-                queue2.push_front(curP);
-                newArrivals = false;
-                return true;
-            } else {
-                newArrivals = true;
-            }
-
-            if (curP.runningTime < curP.requiredRunTime) //not finish
-            {
-                queue2.push_back(curP);
-            } else {
-                curP.endTime = Time;
-                curP.outing = true;
-                for (int i = 0; i < PNumber; i++) {
-                    if (person[i].pID == curP.pID)
-                        person[i].outing = true;
+                else
+                {
+                    thisP.endTime = TIME;
+                    thisP.hasout = true;
+                    for (int i = 0; i < personsNumber; i++)
+                    {
+                        if (persons[i].pID == thisP.pID)
+                            persons[i].hasout = true;
+                    }
+                    thisP.waitingTime = thisP.endTime - thisP.readyTime - thisP.runningTime;
+                    resultQueue.push(thisP);
                 }
-                curP.waitingTime = curP.endTime - curP.readyTime - curP.runningTime;
-                finalQ.push(curP);
+                AgeCqueue();
+                FLAG = true;
             }
-            CheckFormP();
-            return true;
-        } else
-            return false;
-    }
-
-    int main(int argc, char **argv) {
-        readTxt(argv);
-        while (missionNotEnd() && Time <= MAX_TIME) {
-            RefreshQueue();
-
-            bool QE = Q1ArrayExcute();
-            bool QE2 = Que2Excute(QE);
-            if (QE == false && QE2 == false)
-                Time = Time + 5;
         }
+        else
+            break;
+    }
+    return FLAG;
+}
+Person getIP(int time)
+{
 
-        printf("name arrival end ready running waiting\n");
-        while (finalQ.empty() == false)
+    Person x;
+    priority_queue<Person, vector<Person>, compare> priQ;
+    x.priorityNumber = PRIORITYN;
+    x.arriveTime = time;
+    int index = 0;
+    while (index < personsNumber)
+    {
+        if (persons[index].arriveTime <= time && persons[index].inQueue == false)
         {
-            Process temp = finalQ.front();
-            finalQ.pop();
-            printf("%s %d %d %d %d %d\n", temp.pID, temp.arriveTime, temp.endTime, temp.readyTime, temp.runningTime,
-                   temp.waitingTime);
+            priQ.push(persons[index]);
         }
-        return 0;
+        index++;
+    }
+    if (!priQ.empty())
+        x = priQ.top();
+    return x;
+}
 
+bool Que2Excute(bool QE)
+{
+
+    if (QE == true)
+        return false;
+    else if (queue2.empty() == false)
+    {
+        Person thisP = queue2.front();
+        queue2.pop_front();
+        thisP.age = 0;
+        if (thisP.hasrun == false) //first run
+        {
+            thisP.readyTime = TIME;
+            thisP.hasrun = true;
+        }
+
+        int tempremainingT = thisP.tickets * UNIT_TIME - thisP.runningTime;
+        int weighted_time_quantum = 20 * UNIT_TIME - thisP.goneTime;
+        int TorunningTime = min(tempremainingT, weighted_time_quantum);
+        bool interuptFLAG = true;
+
+        int TogetTime = TorunningTime + TIME;
+        Person x = getIP(TogetTime);
+        int torunRealTime = x.arriveTime - TIME; //real excut time
+
+        thisP.runningTime += torunRealTime;
+        TIME += torunRealTime;
+
+        if (newPersonCome)
+        {
+            deque<Person> tempQueue;
+            while (!queue2.empty())
+            {
+                Person x = queue2.front();
+                x.age++;
+                tempQueue.push_back(x);
+                queue2.pop_front();
+            }
+            queue2 = tempQueue;
+            AgeCqueue();
+        }
+        if (torunRealTime < TorunningTime)
+        {
+            if (x.priorityNumber > 3)
+                interuptFLAG = false;
+            else if (x.priorityNumber < thisP.priorityNumber)
+            {
+                interuptFLAG = true;
+                thisP.goneTime = 0;
+                thisP.conTime += 1;
+            }
+        }
+        else
+        {
+            thisP.goneTime = 0;
+            if (weighted_time_quantum < tempremainingT)
+                thisP.conTime += 1;
+        }
+
+        if (!interuptFLAG) //must not finish ,don't need age++
+        {
+            thisP.goneTime += torunRealTime;
+            queue2.push_front(thisP);
+            newPersonCome = false;
+            return true;
+        }
+        else
+        {
+            newPersonCome = true;
+        }
+
+        if (thisP.runningTime < thisP.needRunTime) //not finish
+        {
+            queue2.push_back(thisP);
+        }
+        else
+        {
+            thisP.endTime = TIME;
+            thisP.hasout = true;
+            for (int i = 0; i < personsNumber; i++)
+            {
+                if (persons[i].pID == thisP.pID)
+                    persons[i].hasout = true;
+            }
+            thisP.waitingTime = thisP.endTime - thisP.readyTime - thisP.runningTime;
+            resultQueue.push(thisP);
+        }
+        CheckFormP();
+        return true;
+    }
+    else
+        return false;
+}
+int main(int argc, char **argv)
+{
+    readTxt(argv);
+    while (missionNotEnd() && TIME <= MAX_TIME)
+    {
+        QueueUpdate();
+
+        bool QE = Que1ArrayExcute();
+        bool QE2 = Que2Excute(QE);
+        if (QE == false && QE2 == false)
+            TIME = TIME + 5;
     }
 
-
-
+    printf("name arrival end ready running waiting\n");
+    while (resultQueue.empty() == false)
+    {
+        Person temp = resultQueue.front();
+        resultQueue.pop();
+        printf("%s %d %d %d %d %d\n", temp.pID, temp.arriveTime, temp.endTime, temp.readyTime, temp.runningTime, temp.waitingTime);
+    }
+    return 0;
+}
 
