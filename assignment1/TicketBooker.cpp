@@ -113,7 +113,7 @@ struct compare
             return a.arriveTime > b.arriveTime;
         else
         {
-            return strcmp(a.pID, b.pID) < 0;
+            return strcmp(a.pID, b.pID) > 0;
         }
     }
 };
@@ -456,7 +456,7 @@ int main(int argc, char **argv)
             TIME = TIME + 5;
     }
 
-    printf("name arrival end ready running waiting\n");
+    printf("name   arrival   end   ready   running   waiting\n");
     while (resultQueue.empty() == false)
     {
         Person temp = resultQueue.front();
