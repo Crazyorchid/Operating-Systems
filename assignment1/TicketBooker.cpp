@@ -36,7 +36,7 @@ int personsNumber;
 bool newPersonCome = true;
 int TIME = 0;
 
-class MyQueue
+class MyQueue// setting up the quene and store the values
 {
 
 private:
@@ -84,8 +84,11 @@ public:
     }
     void Popfront()
     {
-        for (int i = 0; i < vec.size() - 1; i++)
+        int i = 0;
+        while (i < vec.size() - 1) {
             vec[i] = vec[i + 1];
+            i++;
+        }
         vec.pop_back();
     }
     Person Front()
@@ -110,7 +113,7 @@ struct compare
             return a.arriveTime > b.arriveTime;
         else
         {
-            return strcmp(a.pID, b.pID) > 0;
+            return strcmp(a.pID, b.pID) < 0;
         }
     }
 };
@@ -141,12 +144,13 @@ void readTxt(char **argv)
 }
 bool missionNotEnd()
 {
-    int i = 0;
-    while (i < personsNumber)
-    {
-        if (!persons[i].hasout)
-            return true;
-        i++;
+    for (int i = 0; i < personsNumber; i++) {
+
+
+        {
+            if (!persons[i].hasout)
+                return true;
+        }
     }
     return false;
 }
@@ -457,7 +461,7 @@ int main(int argc, char **argv)
     {
         Person temp = resultQueue.front();
         resultQueue.pop();
-        printf("%s %d %d %d %d %d\n", temp.pID, temp.arriveTime, temp.endTime, temp.readyTime, temp.runningTime, temp.waitingTime);
+        printf("%s "    " %d "  " %d "  " %d "  " %d "  " %d\n", temp.pID, temp.arriveTime, temp.endTime, temp.readyTime, temp.runningTime, temp.waitingTime);
     }
     return 0;
 }
