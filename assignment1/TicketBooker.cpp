@@ -83,17 +83,21 @@ void readTxt(char **argv)
 {
     int i = 0;
     freopen(argv[1],"r",stdin);
-    while (scanf("%s %d %d %d %d %d", person[i].pID, &person[i].arriveTime, &person[i].age, &person[i].priorityNumber, &person[i].tickets) != EOF);
-    person[i].readyTime = -MAX_NUMBER;
-    person[i].runningTime = 0;
-    person[i].waitingTime = 0;
-    person[i].comeTime = 0;
-    person[i].leaveTime = 0;
-    person[i].inQueue = false;
-    person[i].runnning = false;
-    person[i].outing = false;
-    person[i].requiredRunTime = UNIT_TIME * person[i].tickets;
-    i++;
+    while (scanf("%s %d %d %d %d", person[i].pID, &person[i].arriveTime, &person[i].age, &person[i].priorityNumber, &person[i].tickets) != EOF);
+    {
+
+        person[i].readyTime = -MAX_NUMBER;
+        person[i].runningTime = 0;
+        person[i].waitingTime = 0;
+        person[i].comeTime = 0;
+        person[i].leaveTime = 0;
+        person[i].inQueue = false;
+        person[i].runnning = false;
+        person[i].outing = false;
+        person[i].requiredRunTime = UNIT_TIME * person[i].tickets;
+        i++;
+    }
+    PNumber = i;
 
 }
 
@@ -353,7 +357,8 @@ bool missionNotEnd() {
         }
 
         printf("name arrival end ready running waiting\n");
-        while (finalQ.empty() == false) {
+        while (finalQ.empty() == false)
+        {
             Process temp = finalQ.front();
             finalQ.pop();
             printf("%s %d %d %d %d %d\n", temp.pID, temp.arriveTime, temp.endTime, temp.readyTime, temp.runningTime,
