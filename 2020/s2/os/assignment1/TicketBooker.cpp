@@ -1,306 +1,424 @@
+/*
+ * @Author: your name
+ * @Date: 2020-09-11 14:46:42
+ * @LastEditTime: 2020-09-16 19:36:29
+ * @LastEditors: Please set LastEditors
+ * @Description: In User Settings Edit
+ * @FilePath: /COMP_SCI_3004:7064/TicketBooker.cpp
+ */
+#include <algorithm>
 #include <iostream>
-#include <cstring>
+#include <queue>
+#include <stdio.h>
+#include <string>
 #include <vector>
-#include <fstream>
-#include <iomanip>
-#include<algorithm>
+
+#define QUEUE1 1
+#define QUEUE2 2
+#define QUEUE3 3
+
+#define NEW_COME 0
+#define EXPIRE 1
+#define UPDATE 2
+#define GRAB 3
+
+#define MAXLEN 100
+#define MAXTIME 1000000
+#define TICKET_UNIT 5
+#define PRIORITY 3
+#define AGE_UNIT 100
+
 using namespace std;
-class Person {
-public:
-	Person() {
-		running = 0;
-		ready = -1;
-	}
-	string PID;
-	int ARRTIME;
-	int priority;
-	int age;
-	int tickets;
-	int end;
-	int running;
-	int ready;
-};
-class myQueue {
-public:
-	myQueue() {
-		times = 0;
-		now_choose = -1;
-		debug_flag = 0;
-	}
-	bool compare(Person& a, Person& b)
-	{
-		if (a.ARRTIME < b.ARRTIME)
-			return true;
-		else if(a.ARRTIME > b.ARRTIME)
-			return false;
-		if (a.priority < b.priority)
-			return true;
-		else if (a.priority > b.priority)
-			return false;
-		if(a.PID < b.PID)
-			return true;
-		return false;
-	}
-	
-  bool compare2(Person a, Person b) {
-		if (a.tickets > b.tickets)
-			return true;
-		else if (a.tickets < b.tickets)
-			return false;
-		if (a.priority > b.priority)
-			return true;
-		else if (a.priority < b.priority)
-			return false;
-		if (a.ARRTIME > b.ARRTIME)
-			return true;
-		else if (a.ARRTIME < b.ARRTIME)
-			return false;
-		if(a.PID > b.PID)
-			return true;
-		return false;
-	}
-	void readfile() {
-		while (true) {
-			Person p;
-			cin >> p.PID >> p.ARRTIME >> p.priority >> p.age >> p.tickets;
-			if (cin.eof())
-				break;
-			read_queue.push_back(p);
-		}		
-    int i;
-    int j;
-		while (i < read_queue.size() - 1) {
-			while(j < read_queue.size() - 1 - i) {
-				if (!compare(read_queue[j], read_queue[j + 1])) {
-					Person temp = read_queue[j];
-					read_queue[j] = read_queue[j + 1];
-					read_queue[j + 1] = temp;
-				}
-        j++;
-			}
-      i++;
-		}
-	}
-	void runQ1()
-	{
-		Person cur_cus;
-		if (now_choose == -1) {
-			now_choose = 0;
-			cur_cus = Q1[now_choose];
-			cur_cus.age++;
-			QUATAMAX = 2 * (10 - cur_cus.priority);
-			if (QUATAMAX >= cur_cus.tickets)
-				QUATAMAX = cur_cus.tickets;
-		}
-		else
-			cur_cus = Q1[now_choose];
-		cur_cus.tickets--;
-		QUATAMAX--;
-		cur_cus.running += 5;
-		while (cur_cus.ready == -1)
-			cur_cus.ready = times;
-		if (QUATAMAX == 0) {
-			if (cur_cus.tickets == 0) {
-				cur_cus.end = times + 5;
-				debug_flag = 1;
-				final.push_back(cur_cus);
-			}
-			else {
-				if (cur_cus.age == 2) {
-					cur_cus.age = 0;
-					cur_cus.priority++;
-					if (cur_cus.priority == 4) {
-						move_1to2.push_back(cur_cus);
-					}
-					else
-						move_1toend.push_back(cur_cus);
-				}
-				else {
-					move_1toend.push_back(cur_cus);
-				}
-			}
-			Q1.erase(Q1.begin() + now_choose);
-			now_choose = -1;
-		}
-		else
-			Q1[now_choose] = cur_cus;
-      int i;
-		while (i < Q2.size()) {
-			Q2[i].age += 5;
-			if (Q2[i].age == 100) {
-				Q2[i].age = 0;
-				Q2[i].priority--;
-				if (Q2[i].priority == 3) {
-					move_2to1.push_back(Q2[i]);
-					Q2.erase(Q2.begin() + i);
-					i--;
-				}
-			}i++;
-		}
-	}
 
+// Job
+struct Job {
+    string name;
+    int arrival;
+    int end;
+    int ready;
+    int running;
+    int waitting;
+    // total required time
+    int total;
+    int priority;
+    // the queue scheduled from
+    int from_queue;
+    int cur_queue;
+    int age;
+    int running_time;
+    int last_end;
+    int queue_arrival;
 
-	void runQ2()
-	{
-		int min = 0;
-    int i;
-		while (i < Q2.size()) {
-			if (min == i) {
-				if (Q2[i].ready == -1) {
-					Q2[i].ready = times;
-				}
-				Q2[i].running += 5;
-				Q2[i].tickets -= 1;
-				if (Q2[i].tickets == 0) {
-					Q2[i].end = times+5;
-					debug_flag = 1;
-					final.push_back(Q2[i]);
-					Q2.erase(Q2.begin() + i);
-					min--;
-					i--;
-				}
-			}
-			else {
-				Q2[i].age += 5;
-				if (Q2[i].age == 100) {
-					Q2[i].age = 0;
-					Q2[i].priority -= 1;
-					if (Q2[i].priority == 3) {
-						move_2to1.push_back(Q2[i]);
-						Q2.erase(Q2.begin() + i);
-						if (min > i)
-							min--;
-						i--;
-					}
-				}
-			}
-      i++;
-		}
-	}
-	void mydebug()
-	{
-    int i;
-		ofstream out("input.txt", ios::app);
-		out << "Time:" <<times<< endl
-			<< "name ARRTIME tickets_required running priority_number age / runs" << endl;
-		out << "Q1" << endl;
-		while (i < Q1.size()) {
-			out << Q1[i].PID
-				<< "\t" << Q1[i].ARRTIME
-				<< "\t" << Q1[i].tickets
-				<< "\t" << Q1[i].running
-				<< "\t" << Q1[i].priority
-				<< "\t" << Q1[i].age << endl;
-        i++;
-		}
-		out << "Q2" << endl;
-    int j;
-		while (j < Q2.size()) {
-			out << Q2[j].PID
-				<< "\t" << Q2[j].ARRTIME
-				<< "\t" << Q2[j].tickets
-				<< "\t" << Q2[j].running
-				<< "\t" << Q2[j].priority
-				<< "\t" << Q2[j].age << endl;
-        j++;
-		}
-		out << endl << endl;;
-		out.close();
-	}
-	void swift()
-	{
-		for (int i = 0; i < read_queue.size(); i++) {
-			if (read_queue[i].ARRTIME== times) {
-				debug_flag = 1;
-				if (read_queue[i].priority <= 3)
-					Q1.push_back(read_queue[i]);
-				else {
-					int k;
-					for (k = 0; i < Q2.size(); k++) {
-						if (compare2(Q2[k], read_queue[i])) {
-							Q2.insert(Q2.begin() + k, read_queue[i]);
-							k = -1;
-							break;
-						}
-					}
-					if(k!=-1)
-						Q2.push_back(read_queue[i]);
-				}				
-				read_queue.erase(read_queue.begin() + i);
-				i--;
-			}
-		}
-		for (int i = 0; i < move_1toend.size(); i++) {
-			debug_flag = 1;
-			Q1.push_back(move_1toend[i]);
-		}
-		move_1toend.clear();
-		for (int i = 0; i < move_2to1.size(); i++) {
-			debug_flag = 1;
-			Q1.push_back(move_2to1[i]);
-		}
-		move_2to1.clear();
-		for (int i = 0; i < move_1to2.size(); i++) {
-			debug_flag = 1;
-			int k;
-			while (i < Q2.size()) {
-				if (compare2(Q2[k], read_queue[i])) {
-					Q2.insert(Q2.begin() + k, move_1to2[i]);
-					k = -1;
-          k ++;
-					break;
-				}
-			}
-			if (k != -1)
-				Q2.push_back(read_queue[i]);
-		}
-		move_1to2.clear();
-	}
-	void run() 
-	{
-		while (true) {
-			swift();
-			if (Q1.empty() && Q2.empty() && read_queue.empty())
-				break;
-			debug_flag = 0;
-			if (!Q1.empty()) {
-				runQ1();
-			}
-			else if(!Q2.empty())
-				runQ2();
-			times += 5;
-		}
-	}
-	void outfile()
-	{
-		cout << "name   arrival   end   ready   running   waiting" << endl;
-		for (int i = 0; i < final.size(); i++) {
-			cout << final[i].PID
-				<<"\t" << final[i].ARRTIME
-				<< "\t" << final[i].end
-				<< "\t" << final[i].ready
-				<< "\t" << final[i].running
-				<< "\t" << final[i].end-final[i].ready-final[i].running << endl;
-		}
-	}
-private:
-	vector<Person> read_queue;
-	vector<Person> Q1;
-	vector<Person> Q2;
-	vector<Person> final;
-	vector<Person> move_1toend;
-	vector<Person> move_2to1;
-	vector<Person> move_1to2;
-	int debug_flag;
-	int now_choose;
-	int QUATAMAX;
-	int times;
+    bool operator<(const Job &other) const {
+        // arriving queue
+        if (cur_queue == QUEUE3 && other.cur_queue == QUEUE3)
+            return arrival == other.arrival
+                       ? stoi(name.substr(1)) > stoi(other.name.substr(1))
+                       : arrival > other.arrival;
+
+        if (cur_queue == QUEUE2 && other.cur_queue == QUEUE2) {
+            // remaining time
+            if (total - running != other.total - other.running)
+                return total - running > other.total - other.running;
+            if (priority != other.priority)
+                return priority > other.priority;
+            if (queue_arrival != other.queue_arrival)
+                return queue_arrival > other.queue_arrival;
+
+            if (from_queue == QUEUE1)
+                return false;
+            else
+                return true;
+        }
+
+        if (cur_queue == QUEUE1 && other.cur_queue == QUEUE1) {
+            if (priority != other.priority)
+                return priority > other.priority;
+            if (queue_arrival != other.queue_arrival)
+                return queue_arrival > other.queue_arrival;
+
+            if (from_queue == QUEUE3 && other.from_queue == QUEUE3)
+                return stoi(name.substr(1)) > stoi(other.name.substr(1));
+
+            if (from_queue == QUEUE3)
+                return false;
+            else if (from_queue == QUEUE1)
+                return other.from_queue == QUEUE3;
+            else if (other.from_queue == QUEUE2) {
+                if (total - running != other.total - other.running)
+                    return total - running > other.total - other.running;
+                if (priority != other.priority)
+                    return priority > other.priority;
+                if (queue_arrival != other.queue_arrival)
+                    return queue_arrival > other.queue_arrival;
+                return true;
+            }
+        }
+        return name > other.name;
+    }
+
+    void operator=(const Job &other) {
+        name = other.name;
+        arrival = other.arrival;
+        end = other.end;
+        ready = other.ready;
+        running = other.running;
+        waitting = other.waitting;
+        total = other.total;
+        priority = other.priority;
+        from_queue = other.from_queue;
+        age = other.age;
+        running_time = other.running_time;
+        last_end = other.last_end;
+        cur_queue = other.cur_queue;
+        queue_arrival = other.queue_arrival;
+    }
 };
-int main(int argc, char* argv[])
-{
-	freopen(argv[1], "r", stdin);
-	myQueue my;
-	my.readfile();
-	my.run();
-	my.outfile();
+
+bool compare(Job job1, Job job2) { return job1.end < job2.end; }
+
+// Display records in an order
+void display(vector<Job> finished) {
+    sort(finished.begin(), finished.end(), compare);
+
+    cout << "name   arrival   end   ready   running   waiting\n";
+
+    for (int i = 0; i < finished.size(); i++) {
+        Job job;
+        job = finished[i];
+        cout << job.name << "\t\t" << job.arrival << "\t\t" << job.end << "\t\t"
+             << job.ready << "\t\t" << job.running << "\t\t" << job.waitting
+             << "\n";
+    }
+}
+
+void display_job(Job job) {
+    cout << job.name << " " << job.arrival << " " << job.end << " " << job.ready
+         << " " << job.running << " " << job.waitting << " " << job.total << " "
+         << job.priority << " " << job.from_queue << " " << job.cur_queue << " "
+         << job.running_time << " " << job.last_end << endl;
+}
+
+priority_queue<Job> display_queue(priority_queue<Job> q) {
+    priority_queue<Job> ans;
+    while (!q.empty()) {
+        cout << q.top().name << " " << q.top().cur_queue << " "
+             << q.top().running << " " << q.top().age << endl;
+        ans.push(q.top());
+        q.pop();
+    }
+    return ans;
+}
+
+// Get time quantum of job
+int get_time_quantum(Job job) { return (10 - job.priority) * 10; }
+
+// Load jobs from input file
+priority_queue<Job> load_jobs(char *filename) {
+    priority_queue<Job> jobs;
+    FILE *f;
+    f = fopen(filename, "r");
+
+    char name[MAXLEN];
+    int arrival;
+    int priority;
+    int age;
+    int tickets;
+
+    while (fscanf(f, "%s %d %d %d %d\n", name, &arrival, &priority, &age,
+                  &tickets) != EOF) {
+        Job job;
+        job.name = string(name);
+        job.arrival = arrival;
+        job.age = arrival;
+        job.priority = priority;
+        job.from_queue = QUEUE3;
+        job.total = tickets * TICKET_UNIT;
+        job.ready = -1;
+        job.end = -1;
+        job.running = 0;
+        job.waitting = 0;
+        job.running_time = 0;
+        job.last_end = arrival;
+        job.cur_queue = QUEUE3;
+        job.queue_arrival = arrival;
+
+        jobs.push(job);
+    }
+
+    return jobs;
+}
+
+// Get next new_come event time. If not one, return -1.
+int get_next_come_time(priority_queue<Job> q) {
+    return q.empty() ? MAXTIME : q.top().arrival;
+}
+
+// Get next event time
+int get_next_event(int new_come, int expire, int update) {
+    int next_event = MAXTIME;
+    next_event = min(next_event, new_come);
+    next_event = min(next_event, expire);
+    next_event = min(next_event, update);
+
+    return next_event;
+}
+
+int schedule_a_job(priority_queue<Job> &q1, priority_queue<Job> &q2, int &start,
+                   Job &cur_running_job, int clock) {
+    int expire;
+    if (q1.empty() && q2.empty())
+        return MAXTIME;
+    if (!q1.empty()) {
+        cur_running_job = q1.top();
+        q1.pop();
+    } else if (!q2.empty()) {
+        cur_running_job = q2.top();
+        q2.pop();
+    }
+    if (cur_running_job.ready != -1)
+        cur_running_job.waitting += clock - cur_running_job.last_end;
+    else
+        cur_running_job.ready = clock;
+    start = clock;
+
+    if (cur_running_job.cur_queue == QUEUE1)
+        expire = min(get_time_quantum(cur_running_job),
+                     cur_running_job.total - cur_running_job.running) +
+                 clock;
+    else
+        expire = cur_running_job.total - cur_running_job.running + clock;
+    return expire;
+}
+
+int get_next_update(priority_queue<Job> &q) {
+    if (q.empty())
+        return MAXTIME;
+    int minm = MAXTIME;
+    Job tmp;
+    priority_queue<Job> tmp_queue;
+
+    while (!q.empty()) {
+        tmp = q.top();
+        minm = min(tmp.age + AGE_UNIT, minm);
+        q.pop();
+        tmp_queue.push(tmp);
+    }
+    q = tmp_queue;
+    return minm;
+}
+
+void update_job(priority_queue<Job> &q1, priority_queue<Job> &q2, int update) {
+    if (q2.empty())
+        return;
+
+    Job job;
+    priority_queue<Job> tmp;
+    while (!q2.empty()) {
+        job = q2.top();
+        q2.pop();
+        if (job.age + AGE_UNIT == update) {
+            job.age += AGE_UNIT;
+            job.priority--;
+        }
+        if (job.priority <= PRIORITY) {
+            job.from_queue = job.cur_queue;
+            job.cur_queue = QUEUE1;
+            job.running_time = 0;
+            job.queue_arrival = update;
+            q1.push(job);
+        } else {
+            tmp.push(job);
+        }
+    }
+    q2 = tmp;
+}
+
+// Simulate the scheduling
+vector<Job> simulate(char *filename) {
+    // finished job vector
+    vector<Job> finished;
+    // queue 1, queue 2 and arriving queue 3
+    priority_queue<Job> q1, q2, q3;
+
+    // load jobs from input file
+    q3 = load_jobs(filename);
+
+    // main clock
+    int clock = 0;
+    int new_come = MAXTIME;
+    int expire = MAXTIME;
+    int update = MAXTIME;
+    int start = 0;
+    Job cur_running_job, tmp;
+
+    // get initial new come time
+    new_come = get_next_come_time(q3);
+
+    while (true) {
+        // get update
+        update = get_next_update(q2);
+        // get next event
+        int next_event = get_next_event(new_come, expire, update);
+
+        // execute next event
+        if (next_event == MAXTIME)
+            break;
+
+        // display_job(cur_running_job);
+        // new come
+        if (new_come == next_event) {
+            int next_start;
+            next_start = q3.top().arrival;
+            // push jobs arriving at the same time into q1 and q2
+            while (!q3.empty() && q3.top().arrival == next_start) {
+                tmp = q3.top();
+                if (tmp.priority <= PRIORITY) {
+                    tmp.cur_queue = QUEUE1;
+                    q1.push(tmp);
+                } else {
+                    tmp.cur_queue = QUEUE2;
+                    q2.push(tmp);
+                }
+                q3.pop();
+            }
+            new_come = get_next_come_time(q3);
+
+            // no running job
+            if (expire == MAXTIME) {
+                clock = next_start;
+                expire = schedule_a_job(q1, q2, start, cur_running_job, clock);
+            }
+
+            // running job from queue 2
+            else if (cur_running_job.cur_queue == QUEUE2) {
+                if (!q1.empty() ||
+                    (!q2.empty() && cur_running_job < q2.top())) {
+                    expire = next_start;
+                }
+            }
+        }
+
+        // expire
+        if (expire == next_event) {
+
+            // update running job info
+            cur_running_job.running += expire - start;
+            cur_running_job.last_end = expire;
+            cur_running_job.age = expire;
+            cur_running_job.queue_arrival = expire;
+
+            // finish
+            if (cur_running_job.running == cur_running_job.total) {
+                cur_running_job.end = expire;
+                finished.push_back(cur_running_job);
+            } else {
+                if (cur_running_job.cur_queue == QUEUE1) {
+                    cur_running_job.running_time += 1;
+                    if (cur_running_job.running_time >= 2 &&
+                        cur_running_job.cur_queue == QUEUE1) {
+                        cur_running_job.running_time -= 2;
+                        cur_running_job.priority += 1;
+                    }
+                }
+
+                // downgrade to queue 2
+                if (cur_running_job.priority > PRIORITY) {
+                    cur_running_job.from_queue = cur_running_job.cur_queue;
+                    cur_running_job.cur_queue = QUEUE2;
+                    q2.push(cur_running_job);
+                } else {
+                    cur_running_job.from_queue = QUEUE1;
+                    cur_running_job.cur_queue = QUEUE1;
+                    q1.push(cur_running_job);
+                }
+            }
+
+            clock = expire;
+            // schedule a new job to cpu
+            expire = schedule_a_job(q1, q2, start, cur_running_job, clock);
+        }
+
+        // update
+        if (update == next_event) {
+            clock = update;
+            update_job(q1, q2, update);
+            if (cur_running_job.cur_queue == QUEUE2) {
+                if (!q1.empty()) {
+                    expire = update;
+                }
+            }
+        }
+
+        // cout << next_event << endl;
+        // if (cur_running_job.cur_queue == QUEUE1)
+        //     cout << cur_running_job.name << " " << cur_running_job.cur_queue
+        //          << " " << cur_running_job.running << " " <<
+        //          cur_running_job.age
+        //          << endl;
+        // display_queue(q1);
+        // cout << "-------" << endl;
+        // if (cur_running_job.cur_queue == QUEUE2)
+        //     cout << cur_running_job.name << " " << cur_running_job.cur_queue
+        //          << " " << cur_running_job.running << " " <<
+        //          cur_running_job.age
+        //          << endl;
+        // display_queue(q2);
+        // cout << endl;
+    }
+
+    return finished;
+}
+
+int main(int argc, char **argv) {
+    if (argc < 2 or argc > 3) {
+        cout << "Invalid parameters\n";
+        return 0;
+    }
+
+    char *filename = argv[1];
+    vector<Job> finished;
+    finished = simulate(filename);
+    display(finished);
+    return 0;
 }
