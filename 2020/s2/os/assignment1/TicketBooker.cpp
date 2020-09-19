@@ -22,7 +22,7 @@
 #define UPDATE 2
 #define GRAB 3
 
-#define MAXLEN 100
+#define MAXLENGTH 100
 #define MAXTIME 1000000
 #define TICKET_UNIT 5
 #define PRIORITY 3
@@ -30,8 +30,8 @@
 
 using namespace std;
 
-// Job
-struct Job {
+// Process
+struct Process {
     string name;
     int arrival;
     int end;
@@ -49,20 +49,20 @@ struct Job {
     int last_end;
     int queue_arrival;
 
-    bool operator<(const Job &other) const {
+    bool operator<(const Process &other) const {
         // arriving queue
-        if (cur_queue == QUEUE3 && other.cur_queue == QUEUE3)
+        while (cur_queue == QUEUE3 && other.cur_queue == QUEUE3)
             return arrival == other.arrival
                        ? stoi(name.substr(1)) > stoi(other.name.substr(1))
                        : arrival > other.arrival;
 
-        if (cur_queue == QUEUE2 && other.cur_queue == QUEUE2) {
+        while (cur_queue == QUEUE2 && other.cur_queue == QUEUE2) {
             // remaining time
-            if (total - running != other.total - other.running)
+            while (total - running != other.total - other.running)
                 return total - running > other.total - other.running;
-            if (priority != other.priority)
+            while (priority != other.priority)
                 return priority > other.priority;
-            if (queue_arrival != other.queue_arrival)
+            while (queue_arrival != other.queue_arrival)
                 return queue_arrival > other.queue_arrival;
 
             if (from_queue == QUEUE1)
@@ -71,13 +71,13 @@ struct Job {
                 return true;
         }
 
-        if (cur_queue == QUEUE1 && other.cur_queue == QUEUE1) {
-            if (priority != other.priority)
+        while (cur_queue == QUEUE1 && other.cur_queue == QUEUE1) {
+            while (priority != other.priority)
                 return priority > other.priority;
-            if (queue_arrival != other.queue_arrival)
+            while (queue_arrival != other.queue_arrival)
                 return queue_arrival > other.queue_arrival;
 
-            if (from_queue == QUEUE3 && other.from_queue == QUEUE3)
+            while (from_queue == QUEUE3 && other.from_queue == QUEUE3)
                 return stoi(name.substr(1)) > stoi(other.name.substr(1));
 
             if (from_queue == QUEUE3)
@@ -97,7 +97,7 @@ struct Job {
         return name > other.name;
     }
 
-    void operator=(const Job &other) {
+    void operator=(const Process &other) {
         name = other.name;
         arrival = other.arrival;
         end = other.end;
@@ -115,296 +115,248 @@ struct Job {
     }
 };
 
-bool compare(Job job1, Job job2) { return job1.end < job2.end; }
 
-// Display records in an order
-void display(vector<Job> finished) {
-    sort(finished.begin(), finished.end(), compare);
-
-    cout << "name   arrival   end   ready   running   waiting\n";
-
-    for (int i = 0; i < finished.size(); i++) {
-        Job job;
-        job = finished[i];
-        cout << job.name << "\t\t" << job.arrival << "\t\t" << job.end << "\t\t"
-             << job.ready << "\t\t" << job.running << "\t\t" << job.waitting
-             << "\n";
-    }
-}
-
-void display_job(Job job) {
-    cout << job.name << " " << job.arrival << " " << job.end << " " << job.ready
-         << " " << job.running << " " << job.waitting << " " << job.total << " "
-         << job.priority << " " << job.from_queue << " " << job.cur_queue << " "
-         << job.running_time << " " << job.last_end << endl;
-}
-
-priority_queue<Job> display_queue(priority_queue<Job> q) {
-    priority_queue<Job> ans;
-    while (!q.empty()) {
-        cout << q.top().name << " " << q.top().cur_queue << " "
-             << q.top().running << " " << q.top().age << endl;
-        ans.push(q.top());
-        q.pop();
-    }
-    return ans;
-}
-
-// Get time quantum of job
-int get_time_quantum(Job job) { return (10 - job.priority) * 10; }
-
-// Load jobs from input file
-priority_queue<Job> load_jobs(char *filename) {
-    priority_queue<Job> jobs;
+priority_queue<Process> read_process(char *filename) {
+    priority_queue<Process> jobs;
     FILE *f;
     f = fopen(filename, "r");
 
-    char name[MAXLEN];
+    char name[MAXLENGTH];
     int arrival;
     int priority;
     int age;
     int tickets;
-
+//reading the file
     while (fscanf(f, "%s %d %d %d %d\n", name, &arrival, &priority, &age,
                   &tickets) != EOF) {
-        Job job;
-        job.name = string(name);
-        job.arrival = arrival;
-        job.age = arrival;
-        job.priority = priority;
-        job.from_queue = QUEUE3;
-        job.total = tickets * TICKET_UNIT;
-        job.ready = -1;
-        job.end = -1;
-        job.running = 0;
-        job.waitting = 0;
-        job.running_time = 0;
-        job.last_end = arrival;
-        job.cur_queue = QUEUE3;
-        job.queue_arrival = arrival;
+        Process process;
+        process.name = string(name);
+        process.arrival = arrival;
+        process.age = arrival;
+        process.priority = priority;
+        process.from_queue = QUEUE3;
+        process.total = tickets * TICKET_UNIT;
+        process.ready = -1;
+        process.end = -1;
+        process.running = 0;
+        process.waitting = 0;
+        process.running_time = 0;
+        process.last_end = arrival;
+        process.cur_queue = QUEUE3;
+        process.queue_arrival = arrival;
 
-        jobs.push(job);
+        jobs.push(process);
     }
 
     return jobs;
 }
 
 // Get next new_come event time. If not one, return -1.
-int get_next_come_time(priority_queue<Job> q) {
-    return q.empty() ? MAXTIME : q.top().arrival;
+int next_arrive(priority_queue<Process> q) {
+    if(q.empty()==true){
+      return MAXTIME;
+    }
+    if(q.empty()==false){
+      return q.top().arrival;
+    }
 }
 
 // Get next event time
-int get_next_event(int new_come, int expire, int update) {
-    int next_event = MAXTIME;
-    next_event = min(next_event, new_come);
-    next_event = min(next_event, expire);
-    next_event = min(next_event, update);
-
-    return next_event;
+int get_next_arr(int new_come, int end, int update) {
+    int next_arr = MAXTIME;
+    next_arr =std::min( { MAXTIME,new_come,end,update } );
+    
+    return next_arr;
 }
 
-int schedule_a_job(priority_queue<Job> &q1, priority_queue<Job> &q2, int &start,
-                   Job &cur_running_job, int clock) {
-    int expire;
-    if (q1.empty() && q2.empty())
+int schedule_a_job(priority_queue<Process> &que1, priority_queue<Process> &que2, int &start,
+                   Process &cur_process, int clock) {
+    int end;
+    while (que1.empty() && que2.empty())
         return MAXTIME;
-    if (!q1.empty()) {
-        cur_running_job = q1.top();
-        q1.pop();
-    } else if (!q2.empty()) {
-        cur_running_job = q2.top();
-        q2.pop();
+    if (!que1.empty()) {
+        cur_process = que1.top();
+        que1.pop();
+    } else if (!que2.empty()) {
+        cur_process = que2.top();
+        que2.pop();
     }
-    if (cur_running_job.ready != -1)
-        cur_running_job.waitting += clock - cur_running_job.last_end;
+    if (cur_process.ready != -1)
+        cur_process.waitting = cur_process.waitting + clock - cur_process.last_end;
     else
-        cur_running_job.ready = clock;
+        cur_process.ready = clock;
     start = clock;
 
-    if (cur_running_job.cur_queue == QUEUE1)
-        expire = min(get_time_quantum(cur_running_job),
-                     cur_running_job.total - cur_running_job.running) +
+    if (cur_process.cur_queue == QUEUE1)
+        end = min(10-(cur_process.priority)*10,
+                     cur_process.total - cur_process.running) +
                  clock;
     else
-        expire = cur_running_job.total - cur_running_job.running + clock;
-    return expire;
+        end = cur_process.total - cur_process.running + clock;
+    return end;
 }
 
-int get_next_update(priority_queue<Job> &q) {
-    if (q.empty())
+int get_next_update(priority_queue<Process> &q) {
+    while (q.empty())
         return MAXTIME;
-    int minm = MAXTIME;
-    Job tmp;
-    priority_queue<Job> tmp_queue;
+    int zxsj = MAXTIME;
+    Process tmp;
+    priority_queue<Process> tmp_queue;
 
     while (!q.empty()) {
         tmp = q.top();
-        minm = min(tmp.age + AGE_UNIT, minm);
+        zxsj = min(tmp.age + AGE_UNIT, zxsj);
         q.pop();
         tmp_queue.push(tmp);
     }
     q = tmp_queue;
-    return minm;
+    return zxsj;
 }
 
-void update_job(priority_queue<Job> &q1, priority_queue<Job> &q2, int update) {
-    if (q2.empty())
+void update_job(priority_queue<Process> &que1, priority_queue<Process> &que2, int update) {
+    if (que2.empty())
         return;
 
-    Job job;
-    priority_queue<Job> tmp;
-    while (!q2.empty()) {
-        job = q2.top();
-        q2.pop();
-        if (job.age + AGE_UNIT == update) {
-            job.age += AGE_UNIT;
-            job.priority--;
+    Process process;
+    priority_queue<Process> tmp;
+    while (!que2.empty()) {
+        process = que2.top();
+        que2.pop();
+        while (process.age + AGE_UNIT == update) {
+                process.age += AGE_UNIT;
+                process.priority--;
         }
-        if (job.priority <= PRIORITY) {
-            job.from_queue = job.cur_queue;
-            job.cur_queue = QUEUE1;
-            job.running_time = 0;
-            job.queue_arrival = update;
-            q1.push(job);
+        if (process.priority <= PRIORITY) {
+            process.from_queue = process.cur_queue;
+            process.cur_queue = QUEUE1;
+            process.running_time = 0;
+            process.queue_arrival = update;
+            que1.push(process);
         } else {
-            tmp.push(job);
+            tmp.push(process);
         }
     }
-    q2 = tmp;
+    que2 = tmp;
 }
 
 // Simulate the scheduling
-vector<Job> simulate(char *filename) {
-    // finished job vector
-    vector<Job> finished;
+vector<Process> simulate(char *filename) {
+    // finished process vector
+    vector<Process> finished;
     // queue 1, queue 2 and arriving queue 3
-    priority_queue<Job> q1, q2, q3;
+    priority_queue<Process> que1;
+    priority_queue<Process> que2;
+    priority_queue<Process> que3;
 
     // load jobs from input file
-    q3 = load_jobs(filename);
+    que3 = read_process(filename);
 
     // main clock
     int clock = 0;
     int new_come = MAXTIME;
-    int expire = MAXTIME;
+    int end = MAXTIME;
     int update = MAXTIME;
     int start = 0;
-    Job cur_running_job, tmp;
+    Process cur_process, tmp;
 
     // get initial new come time
-    new_come = get_next_come_time(q3);
+    new_come = next_arrive(que3);
 
-    while (true) {
+    while (1) {
         // get update
-        update = get_next_update(q2);
+        update = get_next_update(que2);
         // get next event
-        int next_event = get_next_event(new_come, expire, update);
+        int next_arr = get_next_arr(new_come, end, update);
 
         // execute next event
-        if (next_event == MAXTIME)
+        if(next_arr == MAXTIME)
             break;
 
-        // display_job(cur_running_job);
+        // display_job(cur_process);
         // new come
-        if (new_come == next_event) {
-            int next_start;
-            next_start = q3.top().arrival;
-            // push jobs arriving at the same time into q1 and q2
-            while (!q3.empty() && q3.top().arrival == next_start) {
-                tmp = q3.top();
+        if (new_come == next_arr) {
+            int next_arrival;
+            next_arrival = que3.top().arrival;
+            // push jobs arriving at the same time into que1 and que2
+            while (!que3.empty() && que3.top().arrival == next_arrival) {
+                tmp = que3.top();
                 if (tmp.priority <= PRIORITY) {
                     tmp.cur_queue = QUEUE1;
-                    q1.push(tmp);
+                    que1.push(tmp);
                 } else {
                     tmp.cur_queue = QUEUE2;
-                    q2.push(tmp);
+                    que2.push(tmp);
                 }
-                q3.pop();
+                que3.pop();
             }
-            new_come = get_next_come_time(q3);
+            new_come = next_arrive(que3);
 
-            // no running job
-            if (expire == MAXTIME) {
-                clock = next_start;
-                expire = schedule_a_job(q1, q2, start, cur_running_job, clock);
+            // no running process
+            if (end == MAXTIME) {
+                clock = next_arrival;
+                end = schedule_a_job(que1, que2, start, cur_process, clock);
             }
 
-            // running job from queue 2
-            else if (cur_running_job.cur_queue == QUEUE2) {
-                if (!q1.empty() ||
-                    (!q2.empty() && cur_running_job < q2.top())) {
-                    expire = next_start;
+            // running process from queue 2
+            else if (cur_process.cur_queue == QUEUE2) {
+                if (!que1.empty() ||
+                    (!que2.empty() && cur_process < que2.top())) {
+                    end = next_arrival;
                 }
             }
         }
 
-        // expire
-        if (expire == next_event) {
+        // end
+        while (end == next_arr) {
 
-            // update running job info
-            cur_running_job.running += expire - start;
-            cur_running_job.last_end = expire;
-            cur_running_job.age = expire;
-            cur_running_job.queue_arrival = expire;
+            // update running process info
+            cur_process.running += end - start;
+            cur_process.last_end = end;
+            cur_process.age = end;
+            cur_process.queue_arrival = end;
 
             // finish
-            if (cur_running_job.running == cur_running_job.total) {
-                cur_running_job.end = expire;
-                finished.push_back(cur_running_job);
+            if (cur_process.running == cur_process.total) {
+                cur_process.end = end;
+                finished.push_back(cur_process);
             } else {
-                if (cur_running_job.cur_queue == QUEUE1) {
-                    cur_running_job.running_time += 1;
-                    if (cur_running_job.running_time >= 2 &&
-                        cur_running_job.cur_queue == QUEUE1) {
-                        cur_running_job.running_time -= 2;
-                        cur_running_job.priority += 1;
+                while (cur_process.cur_queue == QUEUE1) {
+                    cur_process.running_time += 1;
+                    while (cur_process.running_time >= 2 &&
+                        cur_process.cur_queue == QUEUE1) {
+                        cur_process.running_time -= 2;
+                        cur_process.priority += 1;
                     }
                 }
 
                 // downgrade to queue 2
-                if (cur_running_job.priority > PRIORITY) {
-                    cur_running_job.from_queue = cur_running_job.cur_queue;
-                    cur_running_job.cur_queue = QUEUE2;
-                    q2.push(cur_running_job);
-                } else {
-                    cur_running_job.from_queue = QUEUE1;
-                    cur_running_job.cur_queue = QUEUE1;
-                    q1.push(cur_running_job);
+                if (cur_process.priority > PRIORITY) {
+                    cur_process.from_queue = cur_process.cur_queue;
+                    cur_process.cur_queue = QUEUE2;
+                    que2.push(cur_process);
+                } 
+                else {
+                    cur_process.from_queue = QUEUE1;
+                    cur_process.cur_queue = QUEUE1;
+                    que1.push(cur_process);
                 }
             }
 
-            clock = expire;
-            // schedule a new job to cpu
-            expire = schedule_a_job(q1, q2, start, cur_running_job, clock);
+            clock = end;
+            // schedule a new process to cpu
+            end = schedule_a_job(que1, que2, start, cur_process, clock);
         }
 
         // update
-        if (update == next_event) {
+        while (update == next_arr) {
             clock = update;
-            update_job(q1, q2, update);
-            if (cur_running_job.cur_queue == QUEUE2) {
-                if (!q1.empty()) {
-                    expire = update;
+            update_job(que1, que2, update);
+            while (cur_process.cur_queue == QUEUE2) {
+                while(!que1.empty()) {
+                    end = update;
                 }
             }
         }
-
-        // cout << next_event << endl;
-        // if (cur_running_job.cur_queue == QUEUE1)
-        //     cout << cur_running_job.name << " " << cur_running_job.cur_queue
-        //          << " " << cur_running_job.running << " " <<
-        //          cur_running_job.age
-        //          << endl;
-        // display_queue(q1);
-        // cout << "-------" << endl;
-        // if (cur_running_job.cur_queue == QUEUE2)
-        //     cout << cur_running_job.name << " " << cur_running_job.cur_queue
-        //          << " " << cur_running_job.running << " " <<
-        //          cur_running_job.age
-        //          << endl;
-        // display_queue(q2);
-        // cout << endl;
     }
 
     return finished;
@@ -417,8 +369,16 @@ int main(int argc, char **argv) {
     }
 
     char *filename = argv[1];
-    vector<Job> finished;
+    vector<Process> finished;
     finished = simulate(filename);
-    display(finished);
+    
+    cout << "name   arrival   end   ready   running   waiting\n";
+    for (int i = 0; i < finished.size(); i++) {
+        Process process;
+        process = finished[i];
+        cout << process.name << "\t\t" << process.arrival << "\t\t" << process.end << "\t\t"
+             << process.ready << "\t\t" << process.running << "\t\t" << process.waitting
+             << "\n";
+    }
     return 0;
 }
