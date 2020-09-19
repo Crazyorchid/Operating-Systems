@@ -29,33 +29,33 @@ public:
 	}
 	bool comp(Person& a, Person& b)
 	{
-		while (a.ARRTIME < b.ARRTIME)
+		if (a.ARRTIME < b.ARRTIME)
 			return true;
-		while (a.ARRTIME > b.ARRTIME)
+		else if(a.ARRTIME > b.ARRTIME)
 			return false;
-		while (a.priority < b.priority)
+		if (a.priority < b.priority)
 			return true;
-		while (a.priority > b.priority)
+		else if (a.priority > b.priority)
 			return false;
-		while (a.PID < b.PID)
+		if(a.PID < b.PID)
 			return true;
 		return false;
 	}
 	
   bool comp2(Person a, Person b) {
-		while (a.tickets > b.tickets)
+		if (a.tickets > b.tickets)
 			return true;
-		while (a.tickets < b.tickets)
+		else if (a.tickets < b.tickets)
 			return false;
-		while (a.priority > b.priority)
+		if (a.priority > b.priority)
 			return true;
-		while (a.priority < b.priority)
+		else if (a.priority < b.priority)
 			return false;
-		while (a.ARRTIME > b.ARRTIME)
+		if (a.ARRTIME > b.ARRTIME)
 			return true;
-		while (a.ARRTIME < b.ARRTIME)
+		else if (a.ARRTIME < b.ARRTIME)
 			return false;
-		while (a.PID > b.PID)
+		if(a.PID > b.PID)
 			return true;
 		return false;
 	}
