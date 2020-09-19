@@ -27,7 +27,7 @@ public:
 		now_choose = -1;
 		debug_flag = 0;
 	}
-	bool comp(Person& a, Person& b)
+	bool compare(Person& a, Person& b)
 	{
 		if (a.ARRTIME < b.ARRTIME)
 			return true;
@@ -42,7 +42,7 @@ public:
 		return false;
 	}
 	
-  bool comp2(Person a, Person b) {
+  bool compare2(Person a, Person b) {
 		if (a.tickets > b.tickets)
 			return true;
 		else if (a.tickets < b.tickets)
@@ -71,7 +71,7 @@ public:
     int j;
 		while (i < read_queue.size() - 1) {
 			while(j < read_queue.size() - 1 - i) {
-				if (!comp(read_queue[j], read_queue[j + 1])) {
+				if (!compare(read_queue[j], read_queue[j + 1])) {
 					Person temp = read_queue[j];
 					read_queue[j] = read_queue[j + 1];
 					read_queue[j + 1] = temp;
@@ -217,7 +217,7 @@ public:
 				else {
 					int k;
 					for (k = 0; i < Q2.size(); k++) {
-						if (comp2(Q2[k], read_queue[i])) {
+						if (compare2(Q2[k], read_queue[i])) {
 							Q2.insert(Q2.begin() + k, read_queue[i]);
 							k = -1;
 							break;
@@ -244,7 +244,7 @@ public:
 			debug_flag = 1;
 			int k;
 			while (i < Q2.size()) {
-				if (comp2(Q2[k], read_queue[i])) {
+				if (compare2(Q2[k], read_queue[i])) {
 					Q2.insert(Q2.begin() + k, move_1to2[i]);
 					k = -1;
           k ++;
