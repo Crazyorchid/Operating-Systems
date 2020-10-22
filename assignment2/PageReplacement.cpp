@@ -248,7 +248,7 @@ int main(int argc, char *argv[]){
         cout<<std::left<<setw(20)<<"events in trace:"<<std::right<<comandList.size()<<endl;
         cout<<std::left<<setw(20)<<"total disk reads:"<<std::right<<arg.diskReads<<endl;
         cout<<std::left<<setw(20)<<"total disk writes:"<<std::right<<arg.diskWrites<<endl;
-        cout<<std::left<<setw(20)<<"page frameAults:"<<std::right<<arg.pageFault<<endl;
+        cout<<std::left<<setw(20)<<"page faults:"<<std::right<<arg.pageFault<<endl;
     }
     else{
       cout<<"Please provide more than 5 arguments"<<endl;
